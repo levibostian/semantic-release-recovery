@@ -1,0 +1,17 @@
+{
+  "name": "semantic-release-recovery",
+  "version": "1.0.0",
+  "description": "[semantic-release](https://github.com/semantic-release/semantic-release) plugin to recover from a failed deployment.",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "compile": "npx tsc --outDir dist"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@tsconfig/node18": "^18.2.1",
+    "@types/node": "^20.5.9",
+    "typescript": "^5.2.2"
+  }
+}
