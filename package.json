@@ -7,7 +7,7 @@
     "test": "npx jest",
     "compile": "npx tsc --outDir dist"
   },
-  "author": "",
+  "author": "Levi Bostian <levi@curiosityio.com>",
   "license": "MIT",
   "devDependencies": {
     "@tsconfig/node18": "^18.2.1",

@@ -66,4 +66,12 @@ This project's vision is led by fundamental goals that this plugin is trying to 
 1. When using `semantic-release` with a team, everyone on your team should be able to help retry a deployment. Someone who has never used `semantic-release` before should be able to see a failed deployment and retry it. 
 2. Deployment failures should not be scary to recover from. It can be scary to run git commands to recover from a deployment failure. Typos can happen! This plugin should help to prevent the need to run commands manually to avoid anyone on your team needing to feel scared. Let's make deployment failures calm 😄. 
 
+# Development 
+
+```
+$ nvm use 
+$ npm install 
+$ npm run test 
+```
+
 
