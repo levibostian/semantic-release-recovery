@@ -50,6 +50,19 @@ This project's vision is led by fundamental goals that this plugin is trying to 
 1. When using `semantic-release` with a team, everyone on your team should be able to help retry a deployment. Someone who has never used `semantic-release` before should be able to see a failed deployment and retry it. 
 2. Deployment failures should not be scary to recover from. It can be scary to run git commands to recover from a deployment failure. Typos can happen! This plugin should help to prevent the need to run commands manually to avoid anyone on your team needing to feel scared. Let's make deployment failures calm 😄. 
 
+# Why is this plugin needed? 
+
+semantic-release creates and pushes a git tag to your git repository before deployment begins and with no way of disabling it. The community has asked about this a number of times...
+* https://github.com/semantic-release/semantic-release/discussions/2027
+* https://github.com/semantic-release/semantic-release/issues/2381
+* https://github.com/semantic-release/git/issues/405
+
+[The core team believes that it's the responsibility of plugin developers](https://github.com/semantic-release/semantic-release/discussions/2027) to make checks pre-deployment to try to eliminate the possibility of a failed deployment to solve this problem. Although, I would argue that it's not a matter of *if* a deployment will fail, but preparing for *when* a deployment will fail. 
+
+When a deployment fails, the [recommended action](https://github.com/semantic-release/semantic-release/discussions/2027) is to delete the git tag that semantic-release created and try running semantic-release again. However, when working on a team, this has added a lot of confusion. Team members who do not know this tool well, will simply click "retry" on CI server to retry a failed deployment and will notice that a deployment is not retried because the created git tag prevents a deployment retry. 
+
+This plugin tries to solve all of this. When a deployment fails, the plugin attempts to delete the git tag that was created. This should hopefully allow you to simply click "retry" on the CI server to retry a deployment again. Know that retrying a failed deployment could be more complicated then simply deleting a git tag. I suggest reading [what recovery steps your project should take](#what-recovery-steps-should-my-project-take) to learn more about other steps you may need to take. 
+
 # Development 
 
 ```
