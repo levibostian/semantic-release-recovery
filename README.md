@@ -29,7 +29,7 @@ I believe that retrying should be as easy as, well, retrying. Especially when wo
 }
 ```
 
-* For simple projects, this might be all that you need to do. I suggest reading the section on [creating a recovery plan](#what-recovery-steps-should-my-project-take) to see if you need to configure the plugin. 
+* For simple projects, this might be all that you need to do. I suggest reading the section on [creating a recovery plan](#what-recovery-steps-should-my-project-take) to learn more about how to prepare for a failed deployment. 
 
 # What recovery steps should my project take? 
 
@@ -42,22 +42,6 @@ Every project is different for what the deployment process looks like. You will 
 * If `semantic-release` created a git commit for modifications to a `CHANGELOG.md` file, for example, you can revert that git commit, or you can decide not to do anything. Because the git tag that points to the git commit gets deleted, the commit has less of a meaning to it. 
 
 In general, it's up to you to decide what a successful deployment looks like. However, keep in mind that a core requirement of `semantic-release` is that a git tag must be pushed to your git repository in order to determine a deployment was successful. 
-
-# Configuration 
-
-* Disable plugin from deleting git tag. 
-
-```json
-{
-    "plugins": [
-        ["semantic-release-recovery", {
-            "delete-git-tag": false
-        }]
-    ]
-}
-```
-
-I am not aware of a scenario where you don't want to do this, but, it's best to give you the control over what this plugin can do. 
 
 # Vision for this project
 
