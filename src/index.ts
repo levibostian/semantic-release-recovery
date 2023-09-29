@@ -1,5 +1,5 @@
 import { FailContext, NextRelease, VerifyReleaseContext, VerifyConditionsContext } from "semantic-release"
-import git from "./git"
+import * as git from "./git"
 
 let nextRelease: NextRelease | undefined;
 let isDryRun: boolean = false;
@@ -15,13 +15,13 @@ export async function verifyRelease(pluginConfig: {}, context: VerifyReleaseCont
 }
 
 export async function fail(pluginConfig: {}, context: FailContext) {
-  const { logger, stdout } = context;
+  const { logger } = context;
 
   if (!nextRelease) {
     return logger.log('It looks like a new release was not created. Skipping running plugin.')
   }
 
-  stdout.write(await git.deleteTag(nextRelease.gitTag, isDryRun))
+  await git.deleteTag(nextRelease.gitTag, isDryRun, context)
 
   logger.log(`Deleted tag ${nextRelease.gitTag}`)  
 }

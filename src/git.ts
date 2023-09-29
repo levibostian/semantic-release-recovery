@@ -1,16 +1,9 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
-const execPromise = promisify(exec);
+import { runCommand } from "./exec"
+import { BaseContext } from "semantic-release"
 
-export async function deleteTag(tagName: string, dryRun: Boolean): Promise<string> {
-  let args = ["push", "--delete", tagName]  
-  if (dryRun) args.push("--dry-run")
+export async function deleteTag(tagName: string, dryRun: Boolean, context: BaseContext): Promise<void> {
+  let command = `git push origin --delete ${tagName}`
+  if (dryRun) command += ` --dry-run`
 
-  const { stdout, stderr } = await execPromise(`git ${args.join(" ")}`)
-
-  return stdout
-}
-
-export default {
-  deleteTag
+  await runCommand(command, context)  
 }
