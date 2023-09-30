@@ -7,6 +7,7 @@
     "test": "npx jest",
     "compile": "npx tsc --outDir dist"
   },
+  "homepage": "https://github.com/levibostian/semantic-release-recovery#readme",
   "author": "Levi Bostian <levi@curiosityio.com>",
   "license": "MIT",
   "devDependencies": {

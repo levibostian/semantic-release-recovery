@@ -9,6 +9,8 @@ const { defaults: tsjPreset } = require('ts-jest/presets')
 module.exports = {
   resetMocks: true,
   collectCoverage: true,
+  clearMocks: true,  
+  restoreMocks: true, // resets spys 
   // [...]
   transform: {
     ...tsjPreset.transform,
