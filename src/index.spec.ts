@@ -1,6 +1,7 @@
 import { FailContext, VerifyConditionsContext, VerifyReleaseContext } from 'semantic-release';
 import { verifyConditions, verifyRelease, fail } from './index';
 import * as git from './git';
+import * as exec from "./exec"
 
 let context: VerifyConditionsContext & VerifyReleaseContext & FailContext & {options: {dryRun: boolean}} = {
   env: {},
@@ -90,7 +91,7 @@ describe('logging', () => {
   contextWithLogger.logger.log = logMock
 
   beforeEach(async() => {
-    jest.spyOn(git, 'deleteTag').mockResolvedValue(Promise.resolve()) 
+    jest.spyOn(exec, 'runCommand').mockResolvedValue(Promise.resolve())
   })
 
   it('should generate logs that is expected, given running in dry-mode', async () => {
@@ -111,6 +112,7 @@ describe('logging', () => {
   "Looks like something went wrong during the deployment. No worries! I will try to help by cleaning up after the failed deployment so you can re-try the deployment if you wish.",
   "Deleting git tag v1.0.0...",
   "(Well, not really deleting it. You are running in dry-mode. I am just playing pretend here. 🧙‍♂️)",
+  "Running git command: \`git push origin --delete v1.0.0 --dry-run\`",
   "Done! Cleanup is complete and you should be able to retry the deployment now.",
   "Well, technically a deployment was not actually attempted. You can try for *real* now. 😉",
 ]
@@ -132,6 +134,7 @@ describe('logging', () => {
   "Next release is planned to be: v1.0.0. If this deployment fails, I will delete the git tag: v1.0.0.",
   "Looks like something went wrong during the deployment. No worries! I will try to help by cleaning up after the failed deployment so you can re-try the deployment if you wish.",
   "Deleting git tag v1.0.0...",
+  "Running git command: \`git push origin --delete v1.0.0\`",
   "Done! Cleanup is complete and you should be able to retry the deployment now.",
 ]
 `)
