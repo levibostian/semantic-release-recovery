@@ -16,28 +16,12 @@ let context: BaseContext & {options: {dryRun: boolean}} = {
 }
 
 describe('deleteTag', () => {
-  it('given not running in dry-mode, expect git command string', async () => {
-    const exectedCommand = 'git push origin --delete v1.0.0'
-    const givenIsInDryMode = false 
-
-    context.options.dryRun = givenIsInDryMode
+  it('expect git command string', async () => {
+    const exectedCommand = 'git push origin --delete v1.0.0' 
 
     jest.spyOn(exec, 'runCommand').mockReturnValue(Promise.resolve())
 
-    await git.deleteTag("v1.0.0", givenIsInDryMode, context)
-
-    expect(exec.runCommand).toHaveBeenCalledWith(exectedCommand, context)
-  });
-
-  it('given running in dry-mode, expect git command string', async () => {
-    const exectedCommand = 'git push origin --delete v1.0.0 --dry-run'
-    const givenIsInDryMode = true
-
-    context.options.dryRun = givenIsInDryMode 
-
-    jest.spyOn(exec, 'runCommand').mockReturnValue(Promise.resolve())
-
-    await git.deleteTag("v1.0.0", givenIsInDryMode, context)
+    await git.deleteTag("v1.0.0", context)
 
     expect(exec.runCommand).toHaveBeenCalledWith(exectedCommand, context)
   });

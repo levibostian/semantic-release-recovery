@@ -23,8 +23,11 @@ I believe that retrying should be as easy as, well, retrying. Especially when wo
     "plugins": [
         "@semantic-release/commit-analyzer",
         "@semantic-release/release-notes-generator",        
-        "@semantic-release/npm", 
-        "semantic-release-recovery"
+        ["semantic-release-recovery", [
+            ["@semantic-release/npm", {
+                "distTag": "next"
+            }]
+        ]]
     ]
 }
 ```
