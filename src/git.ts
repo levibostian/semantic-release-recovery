@@ -1,4 +1,4 @@
-import { runCommand } from "./exec"
+import { runCommand } from "./exec.js"
 import { BaseContext } from "semantic-release"
 
 export async function deleteTag(tagName: string, context: BaseContext): Promise<void> {

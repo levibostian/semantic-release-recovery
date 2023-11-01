@@ -1,4 +1,4 @@
-import { PluginConfig, parseConfig } from "./pluginConfig"
+import { PluginConfig, parseConfig } from "./pluginConfig.js"
 
 describe('parseConfig', () => {
   it('should return error if no config defined', () => {

@@ -1,6 +1,6 @@
-import * as exec from "./exec"
+import * as exec from "./exec.js"
 import { BaseContext } from 'semantic-release';
-import * as git from "./git"
+import * as git from "./git.js"
 
 let context: BaseContext & {options: {dryRun: boolean}} = {  
   logger: {

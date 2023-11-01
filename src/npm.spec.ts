@@ -1,4 +1,4 @@
-import * as npm from './npm'
+import * as npm from './npm.js'
 
 describe('getDeploymentPlugin', () => {
   it('should return undefined for a npm module not installed', async() => {
