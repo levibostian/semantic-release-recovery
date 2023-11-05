@@ -11,6 +11,13 @@ export function parseConfig(config: any): Error | PluginConfig {
 
   try {
     const deploymentPlugins = config.plugins.map((plugin: any[]) => {
+      if (typeof plugin == "string") {
+        return {
+          name: plugin,
+          config: {}
+        }
+      }
+
       return {
         name: plugin[0] as string,
         config: plugin[1]
