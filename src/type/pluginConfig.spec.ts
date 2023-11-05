@@ -29,4 +29,17 @@ describe('parseConfig', () => {
       }]
     ]})).toEqual(expected)
   })
+
+  it('should work with just name of plugin, no config', () => {
+    const expected = [
+      {
+        name: '@semantic-release/npm',
+        config: {}
+      }
+    ]    
+
+    expect(parseConfig({plugins: [
+      '@semantic-release/npm',
+    ]})).toEqual(expected)
+  })
 })
