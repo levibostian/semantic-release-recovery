@@ -1,5 +1,5 @@
 import { FailContext, VerifyConditionsContext, VerifyReleaseContext } from 'semantic-release';
-import { verifyConditions, verifyRelease, fail, publish } from './index.js';
+import { verifyConditions, verifyRelease, fail, publish, resetPlugin, analyzeCommits, generateNotes, prepare, addChannel, success } from './index.js';
 import {mockGit, gitMock} from './git.js';
 import { PluginConfig } from './type/pluginConfig.js';
 import { MockSemanticReleasePlugin } from "./type/semanticReleasePlugin.js";
@@ -51,6 +51,7 @@ let context: VerifyConditionsContext & VerifyReleaseContext & FailContext = {
 let mockPlugin = new MockSemanticReleasePlugin()
 
 beforeEach(() => {
+  resetPlugin()
   mockGit()
   mockNpm()
 
@@ -66,6 +67,38 @@ const getPluginConfig = (): any => {
     }] 
   ]}
 }
+
+describe('npm', () => {
+  it('should throw error if deployment plugin is not installed', async () => {
+    npmMock.getDeploymentPluginReturn = Promise.resolve(undefined)
+
+    await expect(verifyConditions(getPluginConfig(), context)).rejects.toThrowError('Deployment plugin, @semantic-release/exec, doesn\'t seem to be installed. Install it with npm and then try running your deployment again.')
+  })
+})
+
+describe('running plugins', () => {
+  it('should run all steps for deployment plugin', async () => {
+    await verifyConditions(getPluginConfig(), context)
+    await analyzeCommits(getPluginConfig(), context)
+    await verifyRelease(getPluginConfig(), context)
+    await generateNotes(getPluginConfig(), context)
+    await prepare(getPluginConfig(), context)
+    await publish(getPluginConfig(), context)
+    await addChannel(getPluginConfig(), context)
+    await success(getPluginConfig(), context)
+    await fail(getPluginConfig(), context)
+
+    expect(mockPlugin.verifyConditionsCallCount).toEqual(1)
+    expect(mockPlugin.analyzeCommitsCallCount).toEqual(1)
+    expect(mockPlugin.verifyReleaseCallCount).toEqual(1)
+    expect(mockPlugin.generateNotesCallCount).toEqual(1)
+    expect(mockPlugin.prepareCallCount).toEqual(1)
+    expect(mockPlugin.publishCallCount).toEqual(1)
+    expect(mockPlugin.addChannelCallCount).toEqual(1)
+    expect(mockPlugin.successCallCount).toEqual(1)
+    expect(mockPlugin.failCallCount).toEqual(1)    
+  })
+})
 
 describe('publish', () => {  
 
