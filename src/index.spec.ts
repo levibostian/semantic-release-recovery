@@ -1,143 +1,153 @@
-// import { FailContext, VerifyConditionsContext, VerifyReleaseContext } from 'semantic-release';
-// import { verifyConditions, verifyRelease, fail } from './index';
-// import * as git from './git';
-// import * as exec from "./exec"
+import { FailContext, VerifyConditionsContext, VerifyReleaseContext } from 'semantic-release';
+import { verifyConditions, verifyRelease, fail, publish } from './index.js';
+import {mockGit, gitMock} from './git.js';
+import { PluginConfig } from './type/pluginConfig.js';
+import { MockSemanticReleasePlugin } from "./type/semanticReleasePlugin.js";
+import { mockNpm, npmMock } from "./npm.js"
 
-// let context: VerifyConditionsContext & VerifyReleaseContext & FailContext & {options: {dryRun: boolean}} = {
-//   env: {},
-//   envCi: {
-//     isCi: true,
-//     commit: '1234567890',
-//     branch: 'main',
-//   },
-//   logger: {
-//     log: (message: string) => {
-//       console.log(message)
-//     }
-//   },
-//   branch: {
-//     name: 'main'
-//   },
-//   branches: [{name: 'main'}],
-//   stderr: process.stderr,
-//   stdout: process.stdout,
-//   nextRelease: {
-//     channel: 'main',
-//     name: 'main',
-//     type: 'major',
-//     version: '1.0.0',
-//     gitTag: 'v1.0.0',
-//     gitHead: '1234567890',
-//     notes: 'Release notes'
-//   },
-//   commits: [],
-//   releases: [],
-//   lastRelease: {
-//     version: '',
-//     gitTag: '',
-//     channels: [],
-//     gitHead: '',
-//     name: '',
-//   },
-//   errors: {
-//     errors: [],
-//     message: '',
-//     name: ''
-//   },
-//   options: {
-//     dryRun: true
-//   }
-// }
+let context: VerifyConditionsContext & VerifyReleaseContext & FailContext = {
+  env: {},
+  envCi: {
+    isCi: true,
+    commit: '1234567890',
+    branch: 'main',
+  },
+  logger: {
+    log: (message: string) => {
+      console.log(message)
+    }
+  },
+  branch: {
+    name: 'main'
+  },
+  branches: [{name: 'main'}],
+  stderr: process.stderr,
+  stdout: process.stdout,
+  nextRelease: {
+    channel: 'main',
+    name: 'main',
+    type: 'major',
+    version: '1.0.0',
+    gitTag: 'v1.0.0',
+    gitHead: '1234567890',
+    notes: 'Release notes'
+  },
+  commits: [],
+  releases: [],
+  lastRelease: {
+    version: '',
+    gitTag: '',
+    channels: [],
+    gitHead: '',
+    name: '',
+  },
+  errors: {
+    errors: [],
+    message: '',
+    name: ''
+  }
+}
 
-// describe(('Test fail function, deleting git tag'), () => {
-//   it('given running in dry-mode, expect to run git command also in dry-mode', async () => {
-//     context.options.dryRun = true 
+let mockPlugin = new MockSemanticReleasePlugin()
 
-//     jest.spyOn(git, 'deleteTag').mockReturnValue(Promise.resolve())
+beforeEach(() => {
+  mockGit()
+  mockNpm()
 
-//     await verifyConditions({}, context)
-//     await verifyRelease({}, context)
-//     await fail({}, context)
+  mockPlugin = new MockSemanticReleasePlugin()
 
-//     expect(git.deleteTag).toHaveBeenCalledWith('v1.0.0', true, context)
-//   });
+  npmMock.getDeploymentPluginReturn = Promise.resolve(mockPlugin)
+})
 
-//   it('given not running in dry-mode, expect to run git command not in dry-mode', async () => {
-//     context.options.dryRun = false
+const getPluginConfig = (): any => {
+  return {plugins: [
+    ["@semantic-release/exec", {
+      publishCmd: "echo 'running exec' && false"
+    }] 
+  ]}
+}
 
-//     jest.spyOn(git, 'deleteTag').mockReturnValue(Promise.resolve())
+describe('publish', () => {  
 
-//     await verifyConditions({}, context)
-//     await verifyRelease({}, context)
-//     await fail({}, context)
+  describe('deployment plugin fails', () => {
 
-//     expect(git.deleteTag).toHaveBeenCalledWith('v1.0.0', false, context)
-//   });
+    it('should delete git tag', async () => {
+      mockPlugin.publish = async () => {
+        throw new Error('Something went wrong')
+      }
 
-//   it('given no next release made, expect skip running plugin', async () => {
-//     jest.spyOn(git, 'deleteTag').mockReturnValue(Promise.resolve())
+      await verifyConditions(getPluginConfig(), context)
+      await expect(publish(getPluginConfig(), context)).rejects.toThrowError()
 
-//     await verifyConditions({}, context)
-//     // skip running verify release as semantic-release would not call this function if no next release 
-//     await fail({}, context)
+      expect(gitMock.call.get('deleteTag').tagName).toEqual('v1.0.0')
+    })
 
-//     expect(git.deleteTag).not.toHaveBeenCalled()
-//   });
-// });
+    it('should re-throw error thrown by deployment plugin', async () => {
+      mockPlugin.publish = async () => {
+        throw new Error('Something went wrong')
+      }
 
-// describe('logging', () => {
-//   let contextWithLogger = context
-//   let logMock = jest.fn()
-//   contextWithLogger.logger.log = logMock
+      await verifyConditions(getPluginConfig(), context)
+      await expect(publish(getPluginConfig(), context)).rejects.toThrow('Something went wrong')
+    })
+  })
 
-//   beforeEach(async() => {
-//     jest.spyOn(exec, 'runCommand').mockResolvedValue(Promise.resolve())
-//   })
+  describe('deployment plugin succeeds', () => {
 
-//   it('should generate logs that is expected, given running in dry-mode', async () => {
-//     contextWithLogger.options.dryRun = true 
+    it('should not delete tag, should not throw error', async () => {
+      mockPlugin.publish = async () => {
+        return Promise.resolve()
+      }
 
-//     await verifyConditions({}, contextWithLogger)
-//     await verifyRelease({}, contextWithLogger)
-//     await fail({}, contextWithLogger)
+      await verifyConditions(getPluginConfig(), context)
+      await publish(getPluginConfig(), context)
 
-//     const actualLogs = logMock.mock.calls.flatMap((call) => call[0])
+      expect(gitMock.callCount.get('deleteTag') || 0).toEqual(0)
+    })
+  })
+});
 
-//     expect(actualLogs).toMatchInlineSnapshot(`
-// [
-//   "👋 Hello from the semantic-release-recovery plugin! My job is to gracefully handle failed deployments so you can simply re-try the deployment if you wish. Without a plugin like this, you would have to manually clean up the failed deployment in order to retry. You can learn more about failed deployment cleanup recommendations here: https://github.com/levibostian/semantic-release-recovery#readme",
-//   "Oh, it looks like you are running your deployment with dry-mode enabled. I will make sure all commands I run are also run in dry-mode. I got you! 👊",
-//   "Next release is planned to be: v1.0.0. If this deployment fails, I will delete the git tag: v1.0.0.",
-//   "Well, I will pretend to delete it, since you are running in dry-mode. 😉",
-//   "Looks like something went wrong during the deployment. No worries! I will try to help by cleaning up after the failed deployment so you can re-try the deployment if you wish.",
-//   "Deleting git tag v1.0.0...",
-//   "(Well, not really deleting it. You are running in dry-mode. I am just playing pretend here. 🧙‍♂️)",
-//   "Running git command: \`git push origin --delete v1.0.0 --dry-run\`",
-//   "Done! Cleanup is complete and you should be able to retry the deployment now.",
-//   "Well, technically a deployment was not actually attempted. You can try for *real* now. 😉",
-// ]
-// `)
-//   })
+describe('logging', () => {
+  let contextWithLogger = context
+  let logMock = jest.fn()
+  contextWithLogger.logger.log = logMock
 
-//   it('should generate logs that is expected', async () => {
-//     contextWithLogger.options.dryRun = false
+  it('should generate logs after successful deployment', async () => {    
+    await verifyConditions(getPluginConfig(), contextWithLogger)
+    await publish(getPluginConfig(), contextWithLogger)
 
-//     await verifyConditions({}, contextWithLogger)
-//     await verifyRelease({}, contextWithLogger)
-//     await fail({}, contextWithLogger)
+    const actualLogs = logMock.mock.calls.flatMap((call) => call[0])
 
-//     const actualLogs = logMock.mock.calls.flatMap((call) => call[0])
+    expect(actualLogs).toMatchInlineSnapshot(`
+[
+  "Deployment plugins found: @semantic-release/exec",
+  "Next release is planned to be: 1.0.0. If this deployment fails, I will delete the git tag: v1.0.0",
+  "Running publish step for deployment plugin: @semantic-release/exec",
+]
+`)
+  })
 
-//     expect(actualLogs).toMatchInlineSnapshot(`
-// [
-//   "👋 Hello from the semantic-release-recovery plugin! My job is to gracefully handle failed deployments so you can simply re-try the deployment if you wish. Without a plugin like this, you would have to manually clean up the failed deployment in order to retry. You can learn more about failed deployment cleanup recommendations here: https://github.com/levibostian/semantic-release-recovery#readme",
-//   "Next release is planned to be: v1.0.0. If this deployment fails, I will delete the git tag: v1.0.0.",
-//   "Looks like something went wrong during the deployment. No worries! I will try to help by cleaning up after the failed deployment so you can re-try the deployment if you wish.",
-//   "Deleting git tag v1.0.0...",
-//   "Running git command: \`git push origin --delete v1.0.0\`",
-//   "Done! Cleanup is complete and you should be able to retry the deployment now.",
-// ]
-// `)
-//   })
-// })
+  it('should generate logs after failed deployment', async () => {    
+    mockPlugin.publish = async () => {
+      throw new Error('Something went wrong')
+    }
+
+    await verifyConditions(getPluginConfig(), contextWithLogger)
+    await expect(publish(getPluginConfig(), contextWithLogger)).rejects.toThrowError()
+
+    const actualLogs = logMock.mock.calls.flatMap((call) => call[0])
+
+    expect(actualLogs).toMatchInlineSnapshot(`
+[
+  "Deployment plugins found: @semantic-release/exec",
+  "Next release is planned to be: 1.0.0. If this deployment fails, I will delete the git tag: v1.0.0",
+  "Running publish step for deployment plugin: @semantic-release/exec",
+  "Looks like something went wrong during the deployment. No worries! I will try to help by cleaning up after the failed deployment so you can re-try the deployment if you wish.",
+  "Deleting git tag v1.0.0...",
+  "Cleanup is complete and you should be able to retry the deployment now.",
+  "Re-throwing error thrown by @semantic-release/exec to stop semantic-release from continuing to deploy.",
+]
+`)
+  })
+})
 

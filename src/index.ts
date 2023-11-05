@@ -1,8 +1,8 @@
 import { FailContext, VerifyReleaseContext, VerifyConditionsContext, AnalyzeCommitsContext, PrepareContext, PublishContext, AddChannelContext, SuccessContext, BaseContext } from "semantic-release"
 import { PluginConfig, parseConfig, DeploymentPlugin } from "./type/pluginConfig.js";
-import * as npm from "./npm.js";
+import {npm} from "./npm.js";
 import { SemanticReleasePlugin } from "./type/semanticReleasePlugin.js";
-import * as git from "./git.js"
+import {git} from "./git.js"
 import { getDeploymentPluginLogger, getLogger } from "./logger.js"
 
 // global variables used by the whole plugin as it goes through semantic-release lifecycle
@@ -96,6 +96,8 @@ export async function prepare(pluginConfig: PluginConfig, context: PrepareContex
 }
 
 export async function publish(pluginConfig: PluginConfig, context: PublishContext) {
+  context.logger.log(`Next release is planned to be: ${context.nextRelease.version}. If this deployment fails, I will delete the git tag: ${context.nextRelease.gitTag}`)
+
   for (const deployPlugin of deploymentPlugins) {
     if (deployPlugin.module.publish) {
       modifyContext({context, deployPluginConfig: deployPlugin.config, isForDeploymentPlugin: false})

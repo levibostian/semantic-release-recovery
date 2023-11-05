@@ -2,55 +2,76 @@
 
 [semantic-release](https://github.com/semantic-release/semantic-release) plugin to recover from a failed deployment. 
 
-Deployment failures can happen for a variety of reasons. It's best to plan for when they happen instead of trying to prevent them from happening in the first place. When you run `semantic-release` to perform a deployment and a failure happens (perhaps the npmjs server is down), unfortunately, you cannot simply click the retry button on your CI server to retry the deployment later. `semantic-release` performs some modifications to your project such as pushing a new git tag to your repository which will then skip a deployment if you perform a retry. 
+Deployment failures can happen for a variety of reasons. When you run `semantic-release` to perform a deployment and a failure happens (perhaps the npmjs server is down), unfortunately, you cannot simply click the retry button on your CI server to retry the deployment later. `semantic-release` performs some modifications to your project such as pushing a new git tag to your repository which will then skip a deployment if you perform a retry. 
 
-I believe that retrying should be as easy as, well, retrying. Especially when working on a team, I prefer that they do not need to figure out this behavior of `semantic-release` on their own and instead the deployment process can recover for them. 
+I believe that retrying should be as easy as, well, retrying. Especially when working on a team, I prefer that they do not need to figure out this behavior of `semantic-release` on their own and instead the deployment process can recover for them. That's why this plugin was created. To recover from a failed deployment and allow anyone to retry the deployment without any manual work. 
 
 # Getting Started
 
 * Install the plugin: `npm install semantic-release-recovery`
 
-* Add to your project workflow: 
+* Add to your project workflow. The syntax of this plugin is: 
+
+```json
+["semantic-release-recovery", { "plugins": [
+    <your-semantic-release-deployment-plugin-here>
+]}]
+```
+
+Let's use an example. Imagine that you have a semantic-release config file that includes the `@semantic-release/npm` plugin that performs the deployment for us: 
 
 ```json
 {
-    "tagFormat": "${version}",
-    "branches": [
-        "main",
-        { "name": "beta", "prerelease": true },
-        { "name": "alpha", "prerelease": true }
-    ],
     "plugins": [
         "@semantic-release/commit-analyzer",
         "@semantic-release/release-notes-generator",        
-        ["semantic-release-recovery", [
-            ["@semantic-release/npm", {
-                "distTag": "next"
-            }]
-        ]]
+        ["@semantic-release/npm", {
+            "distTag": "next"
+        }]        
     ]
 }
 ```
 
-* For simple projects, this might be all that you need to do. I suggest reading the section on [creating a recovery plan](#what-recovery-steps-should-my-project-take) to learn more about how to prepare for a failed deployment. 
+Wrap the existing `@semantic-release/npm` configuration by `semantic-release-recovery`: 
 
-# What recovery steps should my project take? 
+```json
+{
+    "plugins": [
+        "@semantic-release/commit-analyzer",
+        "@semantic-release/release-notes-generator",        
+        ["semantic-release-recovery", { "plugins": [
+            ["@semantic-release/npm", {
+                "distTag": "next"
+            }]   
+        ]}]  
+    ]
+}
+```
 
-Every project is different for what the deployment process looks like. You will need to decide what needs to be done in order to create a fully automated deployment failure recovery process. Here are some suggestions to help you to create your recovery plan. 
+If your project uses multiple plugins for deployment, you can use an array: 
 
-* If `semantic-release` attempted to deploy `2.3.1` of your software and failed, you must delete the git tag `2.3.1` that got pushed to your git repository if you want `semantic-release` to retry pushing `2.3.1` again. That is the main function of this plugin is to delete the git tag if a failure occurs. Although, [you can disable this behavior](#configuration) if needed for some reason. 
-
-* If `semantic-release` successfully pushed version `2.3.1` successfully to a production server such as npmjs.com, you should *not* retry pushing version `2.3.1` to the server again. Most services that you upload to require deployments to be immutable. This plugin cannot help you with this step, however. 
-
-* If `semantic-release` created a git commit for modifications to a `CHANGELOG.md` file, for example, you can revert that git commit, or you can decide not to do anything. Because the git tag that points to the git commit gets deleted, the commit has less of a meaning to it. 
-
-In general, it's up to you to decide what a successful deployment looks like. However, keep in mind that a core requirement of `semantic-release` is that a git tag must be pushed to your git repository in order to determine a deployment was successful. 
+```json
+{
+    "plugins": [
+        "@semantic-release/commit-analyzer",
+        "@semantic-release/release-notes-generator",        
+        ["semantic-release-recovery", { "plugins": [
+            ["@semantic-release/npm", {
+                "distTag": "next"
+            }],
+            ["@semantic-release/exec", {
+                "publishCmd": "docker push..."
+            }]   
+        ]}]  
+    ]
+}
+```
 
 # Vision for this project
 
 This project's vision is led by fundamental goals that this plugin is trying to accomplish. With all future development, we try to follow these goals. 
 
-1. When using `semantic-release` with a team, everyone on your team should be able to help retry a deployment. Someone who has never used `semantic-release` before should be able to see a failed deployment and retry it. 
+1. When using `semantic-release` with a team, anyone on your team should be able to retry a deployment. Someone who has never used `semantic-release` before should be able to see a failed deployment and retry it. 
 2. Deployment failures should not be scary to recover from. It can be scary to run git commands to recover from a deployment failure. Typos can happen! This plugin should help to prevent the need to run commands manually to avoid anyone on your team needing to feel scared. Let's make deployment failures calm 😄. 
 
 # Why is this plugin needed? 
