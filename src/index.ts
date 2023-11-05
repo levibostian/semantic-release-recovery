@@ -1,47 +1,159 @@
-import { FailContext, NextRelease, VerifyReleaseContext, VerifyConditionsContext } from "semantic-release"
-import * as git from "./git"
+import { FailContext, VerifyReleaseContext, VerifyConditionsContext, AnalyzeCommitsContext, PrepareContext, PublishContext, AddChannelContext, SuccessContext, BaseContext } from "semantic-release"
+import { PluginConfig, parseConfig, DeploymentPlugin } from "./type/pluginConfig.js";
+import {npm} from "./npm.js";
+import { SemanticReleasePlugin } from "./type/semanticReleasePlugin.js";
+import {git} from "./git.js"
+import { getDeploymentPluginLogger, getLogger } from "./logger.js"
 
-let nextRelease: NextRelease | undefined;
-let isDryRun: boolean = false;
+// global variables used by the whole plugin as it goes through semantic-release lifecycle
+// Deployment plugins that are parsed, loaded, and ready to call functions on. 
+let deploymentPlugins: Array<{module: SemanticReleasePlugin, config: DeploymentPlugin}> = []
 
-const packageInfo: { name: string, homepage: string } = require("../package.json")
-
-export async function verifyConditions(pluginConfig: {}, context: VerifyConditionsContext & {options: {dryRun: boolean}}) {
-  nextRelease = undefined // to reset the plugin's state 
-
-  context.logger.log(`👋 Hello from the ${packageInfo.name} plugin! My job is to gracefully handle failed deployments so you can simply re-try the deployment if you wish. Without a plugin like this, you would have to manually clean up the failed deployment in order to retry. You can learn more about failed deployment cleanup recommendations here: ${packageInfo.homepage}`)
-
-  isDryRun = context.options.dryRun;
-
-  if (isDryRun) {
-    context.logger.log(`Oh, it looks like you are running your deployment with dry-mode enabled. I will make sure all commands I run are also run in dry-mode. I got you! 👊`)
-  }
+export function resetPlugin() { // useful for running tests 
+  deploymentPlugins = []
 }
 
-export async function verifyRelease(pluginConfig: {}, context: VerifyReleaseContext) {
-  nextRelease = context.nextRelease;
-
-  context.logger.log(`Next release is planned to be: ${nextRelease.gitTag}. If this deployment fails, I will delete the git tag: ${nextRelease.gitTag}.`)
-  if (isDryRun) {
-    context.logger.log(`Well, I will pretend to delete it, since you are running in dry-mode. 😉`)
+function modifyContext(args: {context: BaseContext, deployPluginConfig: DeploymentPlugin, isForDeploymentPlugin: boolean}) {
+  if (args.isForDeploymentPlugin) {
+    args.context.logger = getDeploymentPluginLogger(args.context, args.deployPluginConfig)
+  } else {
+    args.context.logger = getLogger(args.context, args.deployPluginConfig)
   }  
 }
 
-export async function fail(pluginConfig: {}, context: FailContext) {
-  if (!nextRelease) {
-    return 
+// -- Plugin lifecycle functions 
+
+export async function verifyConditions(pluginConfig: PluginConfig, context: VerifyConditionsContext) {
+  const pluginConfigOrError = parseConfig(pluginConfig)
+  if (pluginConfigOrError instanceof Error) {
+    throw pluginConfigOrError
   }
 
-  context.logger.log(`Looks like something went wrong during the deployment. No worries! I will try to help by cleaning up after the failed deployment so you can re-try the deployment if you wish.`)
+  // This is the first function that semantic-release calls on a plugin. 
+  // Check if the deployment plugin is already installed. If not, we must throw an error because we cannot install it for them. 
+  // I have tried to do that, but it seems that node loads all modules at startup so it cannot find a module after it's installed during runtime.   
+  for (const plugin of pluginConfigOrError) {
+    let alreadyInstalledPlugin = await npm.getDeploymentPlugin(plugin.name)
+    if (!alreadyInstalledPlugin) {
+      throw new Error(`Deployment plugin, ${plugin.name}, doesn't seem to be installed. Install it with npm and then try running your deployment again.`)
+    }
 
-  context.logger.log(`Deleting git tag ${nextRelease.gitTag}...`)
-  if (isDryRun) {
-    context.logger.log(`(Well, not really deleting it. You are running in dry-mode. I am just playing pretend here. 🧙‍♂️)`)
+    deploymentPlugins.push({
+      module: alreadyInstalledPlugin,
+      config: plugin
+    })
   }
-  await git.deleteTag(nextRelease.gitTag, isDryRun, context)
 
-  context.logger.log(`Done! Cleanup is complete and you should be able to retry the deployment now.`)
-  if (isDryRun) {
-    context.logger.log(`Well, technically a deployment was not actually attempted. You can try for *real* now. 😉`)
+  context.logger.log(`Deployment plugins found: ${deploymentPlugins.map(plugin => plugin.config.name).join(", ")}`)
+
+  for (const deployPlugin of deploymentPlugins) {
+    modifyContext({context, deployPluginConfig: deployPlugin.config, isForDeploymentPlugin: true})
+
+    if (deployPlugin.module.verifyConditions) {
+      await deployPlugin.module.verifyConditions(deployPlugin.config.config || {}, context)
+    }
   }
 }
+
+export async function analyzeCommits(pluginConfig: PluginConfig, context: AnalyzeCommitsContext) {  
+  for (const deployPlugin of deploymentPlugins) {
+    modifyContext({context, deployPluginConfig: deployPlugin.config, isForDeploymentPlugin: true})
+
+    if (deployPlugin.module.analyzeCommits) {
+      await deployPlugin.module.analyzeCommits(deployPlugin.config.config || {}, context)
+    }
+  }
+}
+
+export async function verifyRelease(pluginConfig: PluginConfig, context: VerifyReleaseContext) {
+  for (const deployPlugin of deploymentPlugins) {
+    modifyContext({context, deployPluginConfig: deployPlugin.config, isForDeploymentPlugin: true})
+
+    if (deployPlugin.module.verifyRelease) {
+      await deployPlugin.module.verifyRelease(deployPlugin.config.config || {}, context)
+    }
+  }
+}
+
+export async function generateNotes(pluginConfig: PluginConfig, context: VerifyReleaseContext) {
+  for (const deployPlugin of deploymentPlugins) {
+    modifyContext({context, deployPluginConfig: deployPlugin.config, isForDeploymentPlugin: true})
+
+    if (deployPlugin.module.generateNotes) {
+      await deployPlugin.module.generateNotes(deployPlugin.config.config || {}, context)
+    }
+  }
+}
+
+export async function prepare(pluginConfig: PluginConfig, context: PrepareContext) {
+  for (const deployPlugin of deploymentPlugins) {
+    modifyContext({context, deployPluginConfig: deployPlugin.config, isForDeploymentPlugin: true})
+
+    if (deployPlugin.module.prepare) {
+      await deployPlugin.module.prepare(deployPlugin.config.config || {}, context)
+    }
+  }
+}
+
+export async function publish(pluginConfig: PluginConfig, context: PublishContext) {
+  context.logger.log(`Next release is planned to be: ${context.nextRelease.version}. If this deployment fails, I will delete the git tag: ${context.nextRelease.gitTag}`)
+
+  for (const deployPlugin of deploymentPlugins) {
+    if (deployPlugin.module.publish) {
+      modifyContext({context, deployPluginConfig: deployPlugin.config, isForDeploymentPlugin: false})
+      context.logger.log(`Running publish step for deployment plugin: ${deployPlugin.config.name}`)
+      
+      modifyContext({context, deployPluginConfig: deployPlugin.config, isForDeploymentPlugin: true})
+      try {        
+        await deployPlugin.module.publish(deployPlugin.config.config || {}, context)
+      } catch (error) {
+        modifyContext({context, deployPluginConfig: deployPlugin.config, isForDeploymentPlugin: false})
+
+        context.logger.log(`Looks like something went wrong during the deployment. No worries! I will try to help by cleaning up after the failed deployment so you can re-try the deployment if you wish.`)
+
+        // delete git tag that semantic-release created so that you can retry deployment. 
+        const gitTagToDelete = context.nextRelease.gitTag
+        context.logger.log(`Deleting git tag ${gitTagToDelete}...`)
+        await git.deleteTag(gitTagToDelete, context)    
+        context.logger.log(`Cleanup is complete and you should be able to retry the deployment now.`) 
+
+        context.logger.log(`Re-throwing error thrown by ${deployPlugin.config.name} to stop semantic-release from continuing to deploy.`) 
+        
+        // re-throw the error as this is the behavior that semantic-release expects.
+        // thrown errors by any plugin are meant to stop execution of semantic-release.
+        throw error
+      }
+    }
+  }
+}
+
+export async function addChannel(pluginConfig: PluginConfig, context: AddChannelContext) {  
+  for (const deployPlugin of deploymentPlugins) {
+    modifyContext({context, deployPluginConfig: deployPlugin.config, isForDeploymentPlugin: true})
+
+    if (deployPlugin.module.addChannel) {
+      await deployPlugin.module.addChannel(deployPlugin.config.config || {}, context)
+    }
+  }
+}
+
+export async function success(pluginConfig: PluginConfig, context: SuccessContext) {
+  for (const deployPlugin of deploymentPlugins) {
+    modifyContext({context, deployPluginConfig: deployPlugin.config, isForDeploymentPlugin: true})
+
+    if (deployPlugin.module.success) {
+      await deployPlugin.module.success(deployPlugin.config.config || {}, context)
+    }
+  }
+}
+
+export async function fail(pluginConfig: PluginConfig, context: FailContext) {  
+  for (const deployPlugin of deploymentPlugins) {
+    modifyContext({context, deployPluginConfig: deployPlugin.config, isForDeploymentPlugin: true})
+
+    if (deployPlugin.module.fail) {
+      await deployPlugin.module.fail(deployPlugin.config.config || {}, context)
+    }
+  }
+}
+

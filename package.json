@@ -4,12 +4,13 @@
   "description": "[semantic-release](https://github.com/semantic-release/semantic-release) plugin to recover from a failed deployment.",
   "main": "dist/index.js",
   "scripts": {
-    "test": "npx jest",
+    "test": "NODE_OPTIONS=--experimental-vm-modules npx jest",
     "compile": "npx tsc --outDir dist"
   },
   "homepage": "https://github.com/levibostian/semantic-release-recovery#readme",
   "author": "Levi Bostian <levi@curiosityio.com>",
   "license": "MIT",
+  "type": "module",
   "devDependencies": {
     "@tsconfig/node18": "^18.2.1",
     "@types/jest": "^29.5.4",

@@ -11,6 +11,10 @@ module.exports = {
   collectCoverage: true,
   clearMocks: true,  
   restoreMocks: true, // resets spys 
+  testPathIgnorePatterns: ['/node_modules/', '/dist/'],
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+  },
   // [...]
   transform: {
     ...tsjPreset.transform,
